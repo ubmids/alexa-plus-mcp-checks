@@ -1,0 +1,62 @@
+name: Alexa+ MCP checks
+description: >-
+  Check a self-hosted MCP server against the Alexa+ MCP toolkit requirements
+  and the MCP 2025-11-25 Streamable HTTP transport rules.
+author: Subomi Olagoke
+branding:
+  icon: check-circle
+  color: blue
+
+inputs:
+  url:
+    description: The MCP endpoint to check, e.g. https://example.com/mcp
+    required: true
+  token:
+    description: >-
+      Bearer token for the server. Pass a secret. Without one only the
+      anonymous checks run (401, both well-known documents).
+    required: false
+    default: ""
+  strict:
+    description: Fail SHOULD-level checks instead of reporting them as warnings.
+    required: false
+    default: "false"
+  tool-call:
+    description: >-
+      Optional real tool call as NAME=JSON, e.g. record={"limit": 3}. One per
+      line for several. Used to check where a result names its MCP Apps view.
+    required: false
+    default: ""
+  latency-budget-ms:
+    description: Round-trip budget for the latency check.
+    required: false
+    default: "500"
+  python-version:
+    description: Python used to run the checks.
+    required: false
+    default: "3.12"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install alexa-plus-mcp-checks
+      shell: bash
+      run: python -m pip install --disable-pip-version-check --quiet "$GITHUB_ACTION_PATH"
+
+    - name: Run the checks
+      shell: bash
+      # Inputs go through the environment, never into the script text, so a
+      # value cannot inject shell. The token is masked before anything runs.
+      env:
+        ALEXA_MCP_URL: ${{ inputs.url }}
+        ALEXA_MCP_TOKEN: ${{ inputs.token }}
+        ALEXA_MCP_STRICT: ${{ inputs.strict }}
+        ALEXA_MCP_TOOL_CALL: ${{ inputs.tool-call }}
+        ALEXA_MCP_LATENCY_BUDGET_MS: ${{ inputs.latency-budget-ms }}
+      run: |
+        if [ -n "$ALEXA_MCP_TOKEN" ]; then echo "::add-mask::$ALEXA_MCP_TOKEN"; fi
+        alexa-mcp-check --summary "$GITHUB_STEP_SUMMARY"

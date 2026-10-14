@@ -1,0 +1,65 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --disable-pip-version-check -e .
+      - run: python -m pytest -q
+
+  # The action itself, run against the fake server from tests/: once against a
+  # conformant one (must pass) and once against one that answers JSON-RPC
+  # batches (must fail).
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Start fake MCP servers
+        run: |
+          python tests/fakeserver.py --port 8765 --token ci-token-0123456789 &
+          python tests/fakeserver.py --port 8766 --token ci-token-0123456789 --flaw batch_ok &
+          for port in 8765 8766; do
+            for i in $(seq 1 50); do
+              curl -sf "http://127.0.0.1:$port/.well-known/oauth-authorization-server" >/dev/null && break
+              sleep 0.2
+            done
+          done
+
+      - name: Conformant server passes
+        uses: ./
+        with:
+          url: http://127.0.0.1:8765/mcp
+          token: ci-token-0123456789
+          tool-call: 'show_card={"limit": 2}'
+
+      - name: Server that answers batches fails
+        id: flawed
+        continue-on-error: true
+        uses: ./
+        with:
+          url: http://127.0.0.1:8766/mcp
+          token: ci-token-0123456789
+
+      - name: The flawed run must have failed
+        if: steps.flawed.outcome != 'failure'
+        run: |
+          echo "the checks passed a server that answers JSON-RPC batches"
+          exit 1
