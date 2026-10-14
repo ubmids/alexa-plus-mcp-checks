@@ -1,0 +1,46 @@
+# alexa-plus-mcp-checks against Hearth, current code (working tree at 592d359 plus uncommitted transport fixes)
+# 2026-10-14T00:07:33Z, Python 3.14.4, run on the same machine as the server (loopback)
+# Server: HEARTH_ISSUER=http://127.0.0.1:8791 uvicorn hearth.app:app --host 127.0.0.1 --port 8791
+# Token: minted by Hearth's loopback-only /api/console-token, passed as ALEXA_MCP_TOKEN (not shown)
+# Command:
+#   ALEXA_MCP_TOKEN=$TOKEN pytest --alexa-mcp-url http://127.0.0.1:8791/mcp --alexa-mcp-tool-call 'record={"limit": 3}' -v -p no:cacheprovider
+
+============================= test session starts ==============================
+platform linux -- Python 3.14.4, pytest-9.1.1, pluggy-1.6.0 -- /home/subomi/hack/hearth-fix/alexa-plus-mcp-checks/.venv/bin/python3
+rootdir: /home/subomi/hack/hearth-fix/alexa-plus-mcp-checks
+configfile: pyproject.toml
+testpaths: tests
+plugins: alexa-plus-mcp-checks-0.1.0, anyio-4.15.1
+collecting ... collected 13 items
+
+src/alexa_plus_mcp_checks/checks.py::test_unauthenticated_request_is_401_without_www_authenticate PASSED [  7%]
+src/alexa_plus_mcp_checks/checks.py::test_protected_resource_metadata_is_served PASSED [ 15%]
+src/alexa_plus_mcp_checks/checks.py::test_authorization_server_metadata_advertises_s256 PASSED [ 23%]
+src/alexa_plus_mcp_checks/checks.py::test_bearer_token_in_query_string_is_refused PASSED [ 30%]
+src/alexa_plus_mcp_checks/checks.py::test_initialize_negotiates_2025_11_25_and_issues_a_session PASSED [ 38%]
+src/alexa_plus_mcp_checks/checks.py::test_mcp_apps_views_are_listed_and_served PASSED [ 46%]
+src/alexa_plus_mcp_checks/checks.py::test_tool_result_names_its_view PASSED [ 53%]
+src/alexa_plus_mcp_checks/checks.py::test_warm_round_trip_is_under_the_budget PASSED [ 61%]
+src/alexa_plus_mcp_checks/checks.py::test_foreign_origin_is_refused_with_403 PASSED [ 69%]
+src/alexa_plus_mcp_checks/checks.py::test_unsupported_protocol_version_is_400 PASSED [ 76%]
+src/alexa_plus_mcp_checks/checks.py::test_missing_session_id_after_initialize_is_400 PASSED [ 84%]
+src/alexa_plus_mcp_checks/checks.py::test_jsonrpc_batch_is_refused PASSED [ 92%]
+src/alexa_plus_mcp_checks/checks.py::test_bad_arguments_are_a_tool_error_without_internals PASSED [100%]
+================= Alexa+ MCP checks: http://127.0.0.1:8791/mcp =================
+
+PASS    1  401 without WWW-Authenticate  -- 401, no WWW-Authenticate, with no token and a bad token
+PASS   2a  Protected resource metadata (RFC 9728)  -- /.well-known/oauth-protected-resource/mcp; resource http://127.0.0.1:8791/mcp; authorization_servers ['http://127.0.0.1:8791']
+PASS   2b  Authorization server metadata advertises S256  -- /.well-known/oauth-authorization-server; code_challenge_methods_supported ['S256']
+PASS    3  Bearer token in the query string is refused  -- refused with 400 (with header) and 400 (query only)
+PASS    4  initialize negotiates 2025-11-25 and issues Mcp-Session-Id  -- protocolVersion 2025-11-25, session id issued
+PASS   5a  MCP Apps views are listed and served as text/html;profile=mcp-app  -- 1 view(s) for 8 tool(s): ui://hearth/card-6eca908d.html
+PASS   5b  A tool result with structuredContent names its view  -- record: result names ui://hearth/card-6eca908d.html
+PASS    6  Warm round trip under the latency budget  -- median 0.6 ms, min 0.6, max 0.7 over 10 tools/list calls (budget 500 ms)
+PASS    7  A foreign Origin is refused with 403  -- Origin http://evil.example.com refused with 403
+PASS    8  An unsupported MCP-Protocol-Version is 400  -- MCP-Protocol-Version 1999-01-01 refused with 400
+PASS    9  A request without Mcp-Session-Id after initialize is 400  -- request without a session id refused with 400
+PASS   10  A JSON-RPC batch is refused  -- batch refused with HTTP 400
+PASS   11  Bad tool arguments are an isError result that leaks no internals  -- record: isError, 'Invalid arguments for record: unexpected alexa_mcp_checks_unknown_argument; this tool takes limit'
+13 pass
+============================== 13 passed in 0.07s ==============================
+# exit status: 0

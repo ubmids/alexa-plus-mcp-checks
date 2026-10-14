@@ -1,0 +1,87 @@
+# alexa-plus-mcp-checks against Hearth, old code (4fcf406, before the transport fixes)
+# 2026-10-14T00:07:34Z, Python 3.14.4, run on the same machine as the server (loopback)
+# Server: HEARTH_ISSUER=http://127.0.0.1:8792 uvicorn hearth.app:app --host 127.0.0.1 --port 8792
+# Token: minted by Hearth's loopback-only /api/console-token, passed as ALEXA_MCP_TOKEN (not shown)
+# Command:
+#   ALEXA_MCP_TOKEN=$TOKEN pytest --alexa-mcp-url http://127.0.0.1:8792/mcp --alexa-mcp-tool-call 'record={"limit": 3}' -v -p no:cacheprovider
+
+============================= test session starts ==============================
+platform linux -- Python 3.14.4, pytest-9.1.1, pluggy-1.6.0 -- /home/subomi/hack/hearth-fix/alexa-plus-mcp-checks/.venv/bin/python3
+rootdir: /home/subomi/hack/hearth-fix/alexa-plus-mcp-checks
+configfile: pyproject.toml
+testpaths: tests
+plugins: alexa-plus-mcp-checks-0.1.0, anyio-4.15.1
+collecting ... collected 13 items
+
+src/alexa_plus_mcp_checks/checks.py::test_unauthenticated_request_is_401_without_www_authenticate PASSED [  7%]
+src/alexa_plus_mcp_checks/checks.py::test_protected_resource_metadata_is_served PASSED [ 15%]
+src/alexa_plus_mcp_checks/checks.py::test_authorization_server_metadata_advertises_s256 PASSED [ 23%]
+src/alexa_plus_mcp_checks/checks.py::test_bearer_token_in_query_string_is_refused PASSED [ 30%]
+src/alexa_plus_mcp_checks/checks.py::test_initialize_negotiates_2025_11_25_and_issues_a_session PASSED [ 38%]
+src/alexa_plus_mcp_checks/checks.py::test_mcp_apps_views_are_listed_and_served PASSED [ 46%]
+src/alexa_plus_mcp_checks/checks.py::test_tool_result_names_its_view PASSED [ 53%]
+src/alexa_plus_mcp_checks/checks.py::test_warm_round_trip_is_under_the_budget PASSED [ 61%]
+src/alexa_plus_mcp_checks/checks.py::test_foreign_origin_is_refused_with_403 FAILED [ 69%]
+src/alexa_plus_mcp_checks/checks.py::test_unsupported_protocol_version_is_400 FAILED [ 76%]
+src/alexa_plus_mcp_checks/checks.py::test_missing_session_id_after_initialize_is_400 XFAIL [ 84%]
+src/alexa_plus_mcp_checks/checks.py::test_jsonrpc_batch_is_refused FAILED [ 92%]
+src/alexa_plus_mcp_checks/checks.py::test_bad_arguments_are_a_tool_error_without_internals FAILED [100%]
+
+=================================== FAILURES ===================================
+___________________ test_foreign_origin_is_refused_with_403 ____________________
+a request with Origin: http://evil.example.com was answered HTTP 200 {"jsonrpc":"2.0","id":20,"result":{}}. A present, invalid Origin MUST get 403 Forbidden (MCP 2025-11-25 basic/transports, https://modelcontextprotocol.io/specification/2025-11-25/basic/transports).
+___________________ test_unsupported_protocol_version_is_400 ___________________
+a ping with MCP-Protocol-Version: 1999-01-01 was answered HTTP 200 {"jsonrpc":"2.0","id":21,"result":{}}. An unsupported version MUST get 400 Bad Request (MCP 2025-11-25 basic/transports, https://modelcontextprotocol.io/specification/2025-11-25/basic/transports).
+________________________ test_jsonrpc_batch_is_refused _________________________
+a JSON-RPC batch of two pings was answered HTTP 200 [{"jsonrpc":"2.0","id":23,"result":{}},{"jsonrpc":"2.0","id":24,"result":{}}]. A 2025-11-25 POST body is a single message, so a batch must be refused with a 4xx or -32600 Invalid Request (MCP 2025-11-25 basic/transports, https://modelcontextprotocol.io/specification/2025-11-25/basic/transports).
+____________ test_bad_arguments_are_a_tool_error_without_internals _____________
+tools/call record with an unknown argument `alexa_mcp_checks_unknown_argument` was answered with JSON-RPC error -32602 "Invalid arguments for record: HearthMCP._tool_record() got an unexpected keyword argument 'alexa_mcp_checks_unknown_argument'". Invalid arguments are a tool execution error: a result with isError: true (MCP 2025-11-25 server/tools, error handling (SEP-1303), https://modelcontextprotocol.io/specification/2025-11-25/server/tools). The message also exposes a Python function signature error.
+================= Alexa+ MCP checks: http://127.0.0.1:8792/mcp =================
+PASS    1  401 without WWW-Authenticate  -- 401, no WWW-Authenticate, with no token and a bad token
+PASS   2a  Protected resource metadata (RFC 9728)  -- /.well-known/oauth-protected-resource/mcp; resource http://127.0.0.1:8792/mcp; authorization_servers ['http://127.0.0.1:8792']
+PASS   2b  Authorization server metadata advertises S256  -- /.well-known/oauth-authorization-server; code_challenge_methods_supported ['S256']
+PASS    3  Bearer token in the query string is refused  -- refused with 400 (with header) and 400 (query only)
+PASS    4  initialize negotiates 2025-11-25 and issues Mcp-Session-Id  -- protocolVersion 2025-11-25, session id issued
+PASS   5a  MCP Apps views are listed and served as text/html;profile=mcp-app  -- 1 view(s) for 8 tool(s): ui://hearth/card-6eca908d.html
+PASS   5b  A tool result with structuredContent names its view  -- record: result names ui://hearth/card-6eca908d.html
+PASS    6  Warm round trip under the latency budget  -- median 0.5 ms, min 0.5, max 0.5 over 10 tools/list calls (budget 500 ms)
+FAIL    7  A foreign Origin is refused with 403  -- a request with Origin: http://evil.example.com was answered HTTP 200 {"jsonrpc":"2.0","id":20,"result":{}}. A present, invalid Origin MUST get 403 Forbidden (MC
+FAIL    8  An unsupported MCP-Protocol-Version is 400  -- a ping with MCP-Protocol-Version: 1999-01-01 was answered HTTP 200 {"jsonrpc":"2.0","id":21,"result":{}}. An unsupported version MUST get 400 Bad Request (MCP 2
+WARN    9  A request without Mcp-Session-Id after initialize is 400  -- SHOULD-level, reported as a warning (--alexa-mcp-strict fails it): a ping without Mcp-Session-Id, after initialize issued one, was answered HTTP 200 {"jsonrpc":
+FAIL   10  A JSON-RPC batch is refused  -- a JSON-RPC batch of two pings was answered HTTP 200 [{"jsonrpc":"2.0","id":23,"result":{}},{"jsonrpc":"2.0","id":24,"result":{}}]. A 2025-11-25 POST body is a s
+FAIL   11  Bad tool arguments are an isError result that leaks no internals  -- tools/call record with an unknown argument `alexa_mcp_checks_unknown_argument` was answered with JSON-RPC error -32602 "Invalid arguments for record: HearthMCP.
+4 fail, 8 pass, 1 warn
+=========================== short test summary info ============================
+FAILED src/alexa_plus_mcp_checks/checks.py::test_foreign_origin_is_refused_with_403
+FAILED src/alexa_plus_mcp_checks/checks.py::test_unsupported_protocol_version_is_400
+FAILED src/alexa_plus_mcp_checks/checks.py::test_jsonrpc_batch_is_refused - F...
+FAILED src/alexa_plus_mcp_checks/checks.py::test_bad_arguments_are_a_tool_error_without_internals
+==================== 4 failed, 8 passed, 1 xfailed in 0.10s ====================
+# exit status: 1
+
+# ---------------------------------------------------------------------------
+# Check 9 is SHOULD-level and reported above as a warning. With --alexa-mcp-strict it fails:
+#   ALEXA_MCP_TOKEN=$TOKEN pytest --alexa-mcp-url http://127.0.0.1:8792/mcp --alexa-mcp-strict -k session -v -p no:cacheprovider
+
+============================= test session starts ==============================
+platform linux -- Python 3.14.4, pytest-9.1.1, pluggy-1.6.0 -- /home/subomi/hack/hearth-fix/alexa-plus-mcp-checks/.venv/bin/python3
+rootdir: /home/subomi/hack/hearth-fix/alexa-plus-mcp-checks
+configfile: pyproject.toml
+testpaths: tests
+plugins: alexa-plus-mcp-checks-0.1.0, anyio-4.15.1
+collecting ... collected 13 items / 11 deselected / 2 selected
+
+src/alexa_plus_mcp_checks/checks.py::test_initialize_negotiates_2025_11_25_and_issues_a_session PASSED [ 50%]
+src/alexa_plus_mcp_checks/checks.py::test_missing_session_id_after_initialize_is_400 FAILED [100%]
+
+=================================== FAILURES ===================================
+_______________ test_missing_session_id_after_initialize_is_400 ________________
+a ping without Mcp-Session-Id, after initialize issued one, was answered HTTP 200 {"jsonrpc":"2.0","id":2,"result":{}}. A server that issues session ids SHOULD answer such a request with 400 Bad Request (MCP 2025-11-25 basic/transports, https://modelcontextprotocol.io/specification/2025-11-25/basic/transports).
+================= Alexa+ MCP checks: http://127.0.0.1:8792/mcp =================
+PASS    4  initialize negotiates 2025-11-25 and issues Mcp-Session-Id  -- protocolVersion 2025-11-25, session id issued
+FAIL    9  A request without Mcp-Session-Id after initialize is 400  -- a ping without Mcp-Session-Id, after initialize issued one, was answered HTTP 200 {"jsonrpc":"2.0","id":2,"result":{}}. A server that issues session ids SHOULD 
+1 fail, 1 pass
+=========================== short test summary info ============================
+FAILED src/alexa_plus_mcp_checks/checks.py::test_missing_session_id_after_initialize_is_400
+================== 1 failed, 1 passed, 11 deselected in 0.04s ==================
+# exit status: 1
