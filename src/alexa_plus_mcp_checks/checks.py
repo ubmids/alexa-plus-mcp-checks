@@ -348,8 +348,7 @@ def test_tool_result_names_its_view(alexa_mcp_settings, alexa_mcp_client,
 
     Needs a real call: `--alexa-mcp-tool-call NAME='{"json": "args"}'`. For a
     tool that declares a view, a result carrying `structuredContent` must also
-    carry `_meta.ui.resourceUri`. A tool without a view is not judged: Alexa+
-    renders its structuredContent natively.
+    carry `_meta.ui.resourceUri`. A tool that declares no view is not judged.
     """
     s, c = alexa_mcp_settings, alexa_mcp_client
     if not s.tool_calls:
