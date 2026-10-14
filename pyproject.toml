@@ -31,5 +31,8 @@ alexa-mcp-check = "alexa_plus_mcp_checks.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+alexa_plus_mcp_checks = ["checks.ini"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

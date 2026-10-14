@@ -1,7 +1,8 @@
 """`alexa-mcp-check URL`: run the bundled checks and nothing else.
 
-A thin wrapper over pytest. It runs with no ini file and no cache directory,
-so whatever project it is run from cannot change what is checked, and it
+A thin wrapper over pytest. It runs with its own empty ini file and no cache
+directory, so whatever project it is run from cannot change what is checked,
+and it
 passes the token to the plugin through the environment rather than argv.
 """
 from __future__ import annotations
@@ -12,21 +13,22 @@ import sys
 
 import pytest
 
+from . import plugin
 from .plugin import CHECKS_PATH
+
+CHECKS_INI = os.path.join(os.path.dirname(CHECKS_PATH), "checks.ini")
 
 
 def build_args(ns: argparse.Namespace, extra: list[str]) -> list[str]:
-    args = [CHECKS_PATH, "-c", os.devnull, "-p", "no:cacheprovider",
+    args = [CHECKS_PATH, "-c", CHECKS_INI, "-p", "no:cacheprovider",
             "--rootdir", os.path.dirname(CHECKS_PATH), "-v", "--tb=short",
             "--alexa-mcp-url", ns.url]
-    if os.environ.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD"):
-        args += ["-p", "alexa_plus_mcp_checks.plugin"]
     if ns.strict:
         args.append("--alexa-mcp-strict")
     for call in ns.tool_call or []:
         args += ["--alexa-mcp-tool-call", call]
     if ns.summary:
-        args += ["--alexa-mcp-summary", ns.summary]
+        args += ["--alexa-mcp-summary", os.path.abspath(ns.summary)]
     if ns.latency_budget_ms is not None:
         args += ["--alexa-mcp-latency-budget-ms", str(ns.latency_budget_ms)]
     if ns.latency_samples is not None:
@@ -61,7 +63,17 @@ def main(argv: list[str] | None = None) -> int:
         p.error("give the MCP endpoint URL, or set ALEXA_MCP_URL")
     if ns.token:
         os.environ["ALEXA_MCP_TOKEN"] = ns.token
-    return int(pytest.main(build_args(ns, extra)))
+    args = build_args(ns, extra)
+    # With entry points switched off the plugin has to be handed over directly.
+    plugins = [plugin] if os.environ.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD") else []
+    # Run from the package directory, so the report names checks.py::test_...
+    # rather than a path relative to wherever the command was typed.
+    here = os.getcwd()
+    os.chdir(os.path.dirname(CHECKS_PATH))
+    try:
+        return int(pytest.main(args, plugins=plugins))
+    finally:
+        os.chdir(here)
 
 
 if __name__ == "__main__":
