@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "alexa-plus-mcp-checks"
+version = "0.1.0"
+description = "pytest plugin and GitHub Action that check a self-hosted MCP server against the Alexa+ MCP toolkit requirements and the MCP 2025-11-25 Streamable HTTP rules"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Subomi Olagoke" }]
+requires-python = ">=3.10"
+dependencies = ["pytest>=7.4", "httpx>=0.24"]
+keywords = ["mcp", "alexa", "pytest", "conformance", "oauth"]
+classifiers = [
+    "Framework :: Pytest",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Source = "https://github.com/ubmids/alexa-plus-mcp-checks"
+
+[project.entry-points.pytest11]
+alexa_plus_mcp = "alexa_plus_mcp_checks.plugin"
+
+[project.scripts]
+alexa-mcp-check = "alexa_plus_mcp_checks.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
